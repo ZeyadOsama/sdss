@@ -13,6 +13,10 @@ ANSI_BLUE = "\u001B[34m"
 _NODE_UUID = str(uuid.uuid4())[:8]
 
 
+class Constants:
+    pass
+
+
 def print_yellow(msg):
     print(f"{ANSI_YELLOW}{msg}{ANSI_RESET}")
 
