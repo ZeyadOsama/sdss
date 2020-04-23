@@ -112,7 +112,8 @@ def tcp_server_thread():
     """
     while True:
         cSocket, cAddress = server.accept()
-        data = cSocket.recv()
+        data = cSocket.recv(32)
+        print(data)
 
 def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: int):
     """
@@ -124,10 +125,12 @@ def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: i
     utcTime = datetime.datetime.utcnow()
     utcTimeBytes = utcTime.timestamp()
     utcTimeBytes = struct.pack("!d", utcTimeBytes)
-    print(utcTime)
     print(utcTimeBytes)
-    server.connect((other_ip, other_tcp_port))
-    server.sendall(utcTimeBytes)
+    timeSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    timeSocket.connect((other_ip, other_tcp_port))
+    timeSocket.sendall(utcTimeBytes)
+    #timeSocket.recv()
     pass
 
 
@@ -144,6 +147,8 @@ def entrypoint():
     lock = threading.Lock()
     broadcastRecv = daemon_thread_builder(receive_broadcast_thread)
     broadcastSend = daemon_thread_builder(send_broadcast_thread)
+    tcpServerThread = daemon_thread_builder(tcp_server_thread)
+    tcpServerThread.start()
     broadcastSend.start()
     broadcastRecv.start()
     broadcastSend.join()
