@@ -1,8 +1,11 @@
-import socket
+import sys
+import os
 import threading
+import socket
 import time
 import uuid
-
+import struct
+import datetime
 # https://bluesock.org/~willkg/dev/ansi.html
 ANSI_RESET = "\u001B[0m"
 ANSI_RED = "\u001B[31m"
@@ -11,10 +14,6 @@ ANSI_YELLOW = "\u001B[33m"
 ANSI_BLUE = "\u001B[34m"
 
 _NODE_UUID = str(uuid.uuid4())[:8]
-
-
-class Constants:
-    pass
 
 
 def print_yellow(msg):
@@ -60,20 +59,27 @@ class NeighborInfo(object):
 neighbor_information = {}
 # Leave the server socket as global variable.
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+server.bind(("", 0))
+server.listen(20)
 # Leave broadcaster as a global variable.
 broadcaster = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-
 # Setup the UDP socket
+broadcaster.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+broadcaster.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+broadcaster.bind(("", get_broadcast_port()))
+
 
 
 def send_broadcast_thread():
     node_uuid = get_node_uuid()
+    tcpPort = server.getsockname()[1]
+    #tcpPort = tcpPort.to_bytes(2, 'big')
+    stringToSend = node_uuid + " ON " + str(tcpPort)
+    bytesToBroadCast = stringToSend.encode("utf8")
+    broadCastAddress = ('<broadcast>', get_broadcast_port())
     while True:
-        # TODO: write logic for sending broadcasts.
-        time.sleep(1)  # Leave as is.
-
+        broadcaster.sendto(bytesToBroadCast, broadCastAddress)
+        time.sleep(1)
 
 def receive_broadcast_thread():
     """
@@ -81,28 +87,45 @@ def receive_broadcast_thread():
     launches a thread to connect to new nodes
     and exchange timestamps.
     """
-    while True:
-        # TODO: write logic for receiving broadcasts.
-        data, (ip, port) = broadcaster.recvfrom(4096)
-        print_blue(f"RECV: {data} FROM: {ip}:{port}")
 
+    while True:
+        data, (ip, port) = broadcaster.recvfrom(32)
+        print_blue(f"RECV: {data} FROM: {ip}:{port}")
+        nodeID = struct.unpack("8s", data[:8])
+        nodeID = str(nodeID[0], "utf8")
+        portLen = len(data[12:])
+        tcpPort = struct.unpack(str(portLen) + "s", data[12:])
+        tcpPort = int(str(tcpPort[0], "utf8"))
+        if nodeID == get_node_uuid():
+            continue
+        if nodeID in neighbor_information:
+            neighbor_information[nodeID][1] = neighbor_information[nodeID][1] + 1
+            if neighbor_information[nodeID][1] != 10:
+                continue
+        exchangeThread = daemon_thread_builder(exchange_timestamps_thread, args=(nodeID, ip, tcpPort))
+        exchangeThread.start()
 
 def tcp_server_thread():
     """
     Accept connections from other nodes and send them
     this node's timestamp once they connect.
     """
-    pass
+    while True:
+        cSocket, cAddress = server.accept()
 
 
 def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: int):
     """
     Open a connection to the other_ip, other_tcp_port
     and do the steps to exchange timestamps.
-
     Then update the neighbor_info map using other node's UUID.
     """
     print_yellow(f"ATTEMPTING TO CONNECT TO {other_uuid}")
+    utcTime = datetime.datetime.utcnow()
+    print(utcTime.timestamp())
+    utcTime
+    #server.connect((other_ip, other_tcp_port))
+    #server.send
     pass
 
 
@@ -116,8 +139,17 @@ def daemon_thread_builder(target, args=()) -> threading.Thread:
 
 
 def entrypoint():
-    pass
+    lock = threading.Lock()
+    broadcastRecv = daemon_thread_builder(receive_broadcast_thread)
+    broadcastSend = daemon_thread_builder(send_broadcast_thread)
+    broadcastSend.start()
+    broadcastRecv.start()
+    broadcastSend.join()
+    broadcastRecv.join()
 
+
+
+    pass
 
 ############################################
 ############################################
@@ -132,7 +164,7 @@ def main():
     print_red("If the program blocks/throws, you have to terminate it manually.")
     print_green(f"NODE UUID: {get_node_uuid()}")
     print("*" * 50)
-    time.sleep(2)  # Wait a little bit.
+    time.sleep(2)   # Wait a little bit.
     entrypoint()
 
 
