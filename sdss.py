@@ -112,7 +112,7 @@ def tcp_server_thread():
     """
     while True:
         cSocket, cAddress = server.accept()
-
+        data = cSocket.recv()
 
 def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: int):
     """
@@ -122,10 +122,12 @@ def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: i
     """
     print_yellow(f"ATTEMPTING TO CONNECT TO {other_uuid}")
     utcTime = datetime.datetime.utcnow()
-    print(utcTime.timestamp())
-    utcTime
-    #server.connect((other_ip, other_tcp_port))
-    #server.send
+    utcTimeBytes = utcTime.timestamp()
+    utcTimeBytes = struct.pack("!d", utcTimeBytes)
+    print(utcTime)
+    print(utcTimeBytes)
+    server.connect((other_ip, other_tcp_port))
+    server.sendall(utcTimeBytes)
     pass
 
 
