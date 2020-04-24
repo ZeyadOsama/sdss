@@ -102,6 +102,8 @@ def receive_broadcast_thread():
             neighbor_information[nodeID][1] = neighbor_information[nodeID][1] + 1
             if neighbor_information[nodeID][1] != 10:
                 continue
+            else:
+                neighbor_information[nodeID][1] = 0
         exchangeThread = daemon_thread_builder(exchange_timestamps_thread, args=(nodeID, ip, tcpPort))
         exchangeThread.start()
 
@@ -112,8 +114,11 @@ def tcp_server_thread():
     """
     while True:
         cSocket, cAddress = server.accept()
-        data = cSocket.recv(32)
-        print(data)
+        data = cSocket.recv(32) #???????? should this value be used??
+        utcTime = datetime.datetime.utcnow()
+        utcTimeBytes = utcTime.timestamp()
+        utcTimeBytes = struct.pack("!d", utcTimeBytes)
+        cSocket.sendall(utcTimeBytes)
 
 def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: int):
     """
@@ -123,14 +128,23 @@ def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: i
     """
     print_yellow(f"ATTEMPTING TO CONNECT TO {other_uuid}")
     utcTime = datetime.datetime.utcnow()
-    utcTimeBytes = utcTime.timestamp()
-    utcTimeBytes = struct.pack("!d", utcTimeBytes)
-    print(utcTimeBytes)
-    timeSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    utcTimeNumeric = utcTime.timestamp()
+    utcTimeBytes = struct.pack("!d", utcTimeNumeric)
 
+    timeSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     timeSocket.connect((other_ip, other_tcp_port))
     timeSocket.sendall(utcTimeBytes)
-    #timeSocket.recv()
+
+    othrtTime = timeSocket.recv(32)
+    otherTime = struct.unpack("!d", othrtTime)
+    otherTime = otherTime[0]
+    delay = otherTime - utcTimeNumeric
+    delay = delay * 1000
+    delay = round(delay, 3)
+    print(delay)
+    neighbor_information[other_uuid] = [delay, 0]
+
+
     pass
 
 
