@@ -132,7 +132,10 @@ def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: i
     utcTimeBytes = struct.pack("!d", utcTimeNumeric)
 
     timeSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    timeSocket.connect((other_ip, other_tcp_port))
+    try:
+        timeSocket.connect((other_ip, other_tcp_port))
+    except ConnectionRefusedError:
+        pass
     timeSocket.sendall(utcTimeBytes)
 
     othrtTime = timeSocket.recv(32)
