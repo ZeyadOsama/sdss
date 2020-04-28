@@ -121,39 +121,6 @@ def tcp_server_thread():
     pass
 
 
-def parse_data(data: bytes):
-    return extract_node_id(data), extract_tcp_port(data)
-
-
-def extract_node_id(data: bytes):
-    node_id = struct.unpack('8s', data[:8])
-    node_id = str(node_id[0], Constants.DECODE)
-    return node_id
-
-
-def extract_tcp_port(data: bytes):
-    port_len = len(data[12:])
-    tcp_port = struct.unpack(str(port_len) + 's', data[12:])
-    tcp_port = int(str(tcp_port[0], Constants.DECODE))
-    return tcp_port
-
-
-def get_broadcast():
-    node_uuid = get_node_uuid()
-    tcp_port = server.getsockname()[1]
-    msg = node_uuid + ' ON ' + str(tcp_port)
-    broadcast_msg = msg.encode(Constants.DECODE)
-    broadcast_addr = ('<broadcast>', get_broadcast_port())
-    return broadcast_msg, broadcast_addr
-
-
-def get_utc() -> bytes:
-    utc = datetime.datetime.utcnow()
-    b_utc = utc.timestamp()
-    b_utc = struct.pack('!d', b_utc)
-    return b_utc
-
-
 def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: int):
     """
     Open a connection to the other_ip, other_tcp_port
@@ -185,6 +152,39 @@ def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: i
 
     neighbor_information[other_uuid] = [delay, 0]
     return
+
+
+def parse_data(data: bytes):
+    return extract_node_id(data), extract_tcp_port(data)
+
+
+def extract_node_id(data: bytes):
+    node_id = struct.unpack('8s', data[:8])
+    node_id = str(node_id[0], Constants.DECODE)
+    return node_id
+
+
+def extract_tcp_port(data: bytes):
+    port_len = len(data[12:])
+    tcp_port = struct.unpack(str(port_len) + 's', data[12:])
+    tcp_port = int(str(tcp_port[0], Constants.DECODE))
+    return tcp_port
+
+
+def get_broadcast():
+    node_uuid = get_node_uuid()
+    tcp_port = server.getsockname()[1]
+    msg = node_uuid + ' ON ' + str(tcp_port)
+    broadcast_msg = msg.encode(Constants.DECODE)
+    broadcast_addr = ('<broadcast>', get_broadcast_port())
+    return broadcast_msg, broadcast_addr
+
+
+def get_utc() -> bytes:
+    utc = datetime.datetime.utcnow()
+    b_utc = utc.timestamp()
+    b_utc = struct.pack('!d', b_utc)
+    return b_utc
 
 
 def daemon_thread_builder(target, args=()) -> threading.Thread:
