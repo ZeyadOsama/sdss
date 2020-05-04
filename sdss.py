@@ -98,11 +98,11 @@ def receive_broadcast_thread():
         if node_id == get_node_uuid():
             continue
         if node_id in neighbor_information:
-            neighbor_information[node_id][1] = neighbor_information[node_id][1] + 1
-            if neighbor_information[node_id][1] != 10:
+            neighbor_information[node_id].last_timestamp = neighbor_information[node_id].last_timestamp + 1
+            if neighbor_information[node_id].last_timestamp != 10:
                 continue
             else:
-                neighbor_information[node_id][1] = 0
+                neighbor_information[node_id].last_timestamp = 0
 
         th_exchange = daemon_thread_builder(exchange_timestamps_thread, args=(node_id, ip, tcp_port))
         th_exchange.start()
@@ -149,8 +149,7 @@ def exchange_timestamps_thread(other_uuid: str, other_ip: str, other_tcp_port: i
     delay = delay * 1000
     delay = round(delay, 3)
     print_green(delay)
-
-    neighbor_information[other_uuid] = [delay, 0]
+    neighbor_information[other_uuid] = NeighborInfo(delay, 0)
     return
 
 
